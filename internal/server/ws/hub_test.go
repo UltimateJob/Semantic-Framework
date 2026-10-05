@@ -21,7 +21,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -29,8 +28,7 @@ import (
 	"github.com/coder/websocket"
 
 	"insightos.cn/semantic-framework/internal/server/auth"
-	"insightos.cn/semantic-framework/internal/store"
-	"insightos.cn/semantic-framework/pkg/config"
+	"insightos.cn/semantic-framework/internal/store/storetest"
 	"insightos.cn/semantic-framework/pkg/log"
 )
 
@@ -47,18 +45,7 @@ func newTestEnv(t *testing.T) *testEnv {
 	t.Helper()
 	logger := log.New(log.Options{Level: log.LevelError, Writer: io.Discard})
 
-	cfg := config.StoreConfig{
-		Driver:     "sqlite",
-		SQLitePath: filepath.Join(t.TempDir(), "test.db"),
-	}
-	st, err := store.Open(cfg, logger)
-	if err != nil {
-		t.Fatalf("Open store 失败: %v", err)
-	}
-	if err := st.Migrate(); err != nil {
-		t.Fatalf("Migrate 失败: %v", err)
-	}
-	t.Cleanup(func() { _ = st.Close() })
+	st := storetest.OpenMigrated(t, logger)
 
 	svc := auth.NewService(st, logger)
 	t.Setenv("SEMANTIC_ADMIN_PASSWORD", "s3cret")

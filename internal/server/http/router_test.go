@@ -21,7 +21,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -30,6 +29,7 @@ import (
 	"insightos.cn/semantic-framework/internal/server/auth"
 	"insightos.cn/semantic-framework/internal/server/http/handlers"
 	"insightos.cn/semantic-framework/internal/store"
+	"insightos.cn/semantic-framework/internal/store/storetest"
 	"insightos.cn/semantic-framework/internal/tool"
 	"insightos.cn/semantic-framework/pkg/config"
 	"insightos.cn/semantic-framework/pkg/llm"
@@ -159,18 +159,7 @@ func TestLogging(t *testing.T) {
 // newTestRouter 装配一个带真实 auth 服务（临时库）的路由。
 func newTestRouter(t *testing.T) http.Handler {
 	t.Helper()
-	cfg := config.StoreConfig{
-		Driver:     "sqlite",
-		SQLitePath: filepath.Join(t.TempDir(), "test.db"),
-	}
-	st, err := store.Open(cfg, discardLogger())
-	if err != nil {
-		t.Fatalf("Open store 失败: %v", err)
-	}
-	if err := st.Migrate(); err != nil {
-		t.Fatalf("Migrate 失败: %v", err)
-	}
-	t.Cleanup(func() { _ = st.Close() })
+	st := storetest.OpenMigrated(t, discardLogger())
 
 	svc := auth.NewService(st, discardLogger())
 	t.Setenv("SEMANTIC_ADMIN_PASSWORD", "s3cret")
@@ -243,6 +232,18 @@ func TestRouterAuthFlow(t *testing.T) {
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &loginBody); err != nil || loginBody.Token == "" {
 		t.Fatalf("登录响应应含 token，实际: %s", rec.Body.String())
+	}
+
+	// 安全确认的 Handler 单测不能代替正式路由装配；曾因 action 正则遗漏，
+	// 前端“确认现场安全”始终落到普通 404，导致失败 Workflow 无法终结。
+	confirmReq := httptest.NewRequest(http.MethodPost,
+		"/api/v1/projects/missing/workflows/missing/confirm-stop", strings.NewReader(`{}`))
+	confirmReq.Header.Set("Authorization", "Bearer "+loginBody.Token)
+	confirmRec := httptest.NewRecorder()
+	router.ServeHTTP(confirmRec, confirmReq)
+	if !json.Valid(confirmRec.Body.Bytes()) || confirmRec.Code != http.StatusNotFound {
+		t.Fatalf("confirm-stop 应进入 Handler 的项目校验，实际: %d %s",
+			confirmRec.Code, confirmRec.Body.String())
 	}
 
 	// 受保护端点：无 token 401 + 统一错误格式。

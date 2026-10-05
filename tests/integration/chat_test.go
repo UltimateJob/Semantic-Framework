@@ -31,6 +31,7 @@ import (
 	"insightos.cn/semantic-framework/internal/agent/runtime"
 	"insightos.cn/semantic-framework/internal/bootstrap"
 	"insightos.cn/semantic-framework/internal/server/ws"
+	"insightos.cn/semantic-framework/internal/store/storetest"
 	"insightos.cn/semantic-framework/pkg/config"
 	"insightos.cn/semantic-framework/pkg/log"
 )
@@ -49,6 +50,7 @@ func startChatApp(t *testing.T, dbPath string) (httpBase, wsBase string, app *bo
 	cfg.Server.HTTPAddr = freeAddr(t)
 	cfg.Server.WSAddr = freeAddr(t)
 	cfg.Store.SQLitePath = dbPath
+	storetest.SeedMigratedAt(t, cfg.Store.SQLitePath)
 	cfg.LLM.Default = "mock" // 无 key 环境：默认模型走 mock 驱动
 	cfg.Agents.ProfilesDir = profilesDir
 	logger := log.New(log.Options{Level: log.LevelError, Writer: io.Discard})

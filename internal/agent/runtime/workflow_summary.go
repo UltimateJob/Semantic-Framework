@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/cloudwego/eino/schema"
@@ -116,6 +117,11 @@ func (s *Service) runWorkflowTerminalSummary(ctx context.Context, project store.
 	}
 	text, _, runErr := s.consumePurposeRun(runCtx, rt, run,
 		append(history.Messages, schema.UserMessage(prompt)))
+	checkStart := time.Now()
+	if runErr == nil && strings.TrimSpace(text) == "" {
+		runErr = fmt.Errorf("Workflow summary is empty; no factual summary was produced")
+	}
+	s.recordContractCheck(run, runtimePurposeWorkflowSummary, 1, checkStart, runErr)
 	status, errorText := store.RunStatusCompleted, ""
 	if runErr != nil {
 		status, errorText = store.RunStatusFailed, runErr.Error()

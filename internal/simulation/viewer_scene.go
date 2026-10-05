@@ -25,6 +25,10 @@ import (
 	"net/url"
 )
 
+// 整座原生场景包含多物体几何和材质，容量独立于单个 VisualAsset 的 64 MiB。
+// 仍限制单次读取内存，避免将大型场景拆成用户必须手动导入的多个模型。
+const maxViewerSceneBytes = 256 << 20
+
 // RuntimeViewerSceneClient 是无需服务端会话的 GLB + Pose Stream 能力。
 // 采用可选接口，未升级的 remote Runtime 会明确报告不支持，而不会退回 JPEG。
 type RuntimeViewerSceneClient interface {
@@ -65,11 +69,14 @@ func (c *HTTPRuntimeClient) ViewerSceneContent(
 		return nil, "", fmt.Errorf("Runtime Viewer Scene Content-Type 无效: %q",
 			response.Header.Get("Content-Type"))
 	}
-	content, err := io.ReadAll(io.LimitReader(response.Body, maxVisualAssetBytes+1))
+	if response.ContentLength > maxViewerSceneBytes {
+		return nil, "", fmt.Errorf("Runtime Viewer Scene 超过 256 MiB 上限")
+	}
+	content, err := io.ReadAll(io.LimitReader(response.Body, maxViewerSceneBytes+1))
 	if err != nil {
 		return nil, "", fmt.Errorf("读取 Viewer Scene 失败: %w", err)
 	}
-	if len(content) > maxVisualAssetBytes || len(content) < 12 ||
+	if len(content) > maxViewerSceneBytes || len(content) < 12 ||
 		!bytes.Equal(content[:4], []byte("glTF")) {
 		return nil, "", fmt.Errorf("Runtime Viewer Scene 不是有效的受限 GLB")
 	}

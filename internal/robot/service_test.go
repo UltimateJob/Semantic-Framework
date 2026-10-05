@@ -30,7 +30,7 @@ import (
 
 	"insightos.cn/semantic-framework/internal/robotruntime"
 	"insightos.cn/semantic-framework/internal/store"
-	"insightos.cn/semantic-framework/pkg/config"
+	"insightos.cn/semantic-framework/internal/store/storetest"
 	"insightos.cn/semantic-framework/pkg/log"
 )
 
@@ -51,16 +51,7 @@ func (r *recordingRobotEvents) PublishRobotEvent(projectID, resourceType, resour
 
 func openRobotTestStore(t *testing.T) *store.Store {
 	t.Helper()
-	st, err := store.Open(config.StoreConfig{Driver: "sqlite", SQLitePath: filepath.Join(t.TempDir(), "robot.db")},
-		log.New(log.Options{Level: log.LevelError, Writer: io.Discard}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := st.Migrate(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = st.Close() })
-	return st
+	return storetest.OpenMigrated(t, log.New(log.Options{Level: log.LevelError, Writer: io.Discard}))
 }
 
 func TestHeartbeatPublishesOnlyMeaningfulPilotChanges(t *testing.T) {

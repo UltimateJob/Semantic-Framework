@@ -46,8 +46,14 @@ func main() {
 		usage()
 	}
 	switch os.Args[1] {
+	case "build":
+		os.Exit(runBuild(os.Args[2:]))
 	case "init":
 		os.Exit(runInit(os.Args[2:]))
+	case "install":
+		os.Exit(runInstall(os.Args[2:]))
+	case "uninstall":
+		os.Exit(runUninstall(os.Args[2:]))
 	case "login":
 		os.Exit(runLogin(os.Args[2:]))
 	case "chat":
@@ -71,6 +77,9 @@ func usage() {
 	fmt.Fprintln(os.Stderr, `semantic — Semantic Framework 管理 CLI
 
 用法:
+  semantic install <包|源码目录> --project <项目ID>                安装组件；--robot 绑定设备，--apply 空闲生效
+  semantic build <源码目录> --output <安装包.zip>                  构建组件或安装包，支持 --wheel-dir 和 --offline
+  semantic install runtime <参数>                                  安装 Runtime Pack（复用 runtime install）
   semantic init [-c 配置文件路径] [--force] [--reset-data]        安装配置；可备份并重建开发数据
   semantic login --username <名> --password <密> [--server 地址]   登录并保存凭据（~/.semantic/credentials.json）
   semantic chat [--session 会话ID] [--server 地址] [--ws 地址]     进入对话 REPL（缺省新建会话，/quit 退出）

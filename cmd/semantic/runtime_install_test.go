@@ -16,12 +16,68 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"gopkg.in/yaml.v3"
 	"insightos.cn/semantic-framework/internal/simulation"
 )
+
+func TestMaterializeRuntimePackChecksExistingContent(t *testing.T) {
+	root := t.TempDir()
+	source, target := filepath.Join(root, "source"), filepath.Join(root, "installed")
+	if err := os.MkdirAll(source, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	file := func(name, value string) simulation.RuntimePackFile {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(source, name), []byte(value), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256([]byte(value))
+		return simulation.RuntimePackFile{Path: name, SHA256: hex.EncodeToString(sum[:])}
+	}
+	manifest := simulation.RuntimePackManifest{
+		SchemaVersion: 1, PackID: "native-mujoco", PackVersion: "0.4.0",
+		Profile: simulation.RuntimeProfile{RuntimeProfileID: "native-mujoco", Engine: "mujoco", Loader: "native"},
+		Runner:  "native-mujoco", PythonVersion: "3.10.16", Endpoint: "http://127.0.0.1:8090",
+		RequirementsLock:  file("requirements.lock", "dependency==1"),
+		Wheels:            []simulation.RuntimePackFile{file("runtime.whl", "original")},
+		Wheelhouse:        []simulation.RuntimePackFile{file("dependency.whl", "dependency")},
+		Licenses:          []simulation.RuntimePackFile{file("LICENSE", "license")},
+		VerificationFiles: []simulation.RuntimePackFile{file("version.json", "{}")},
+	}
+	writeManifest := func() {
+		t.Helper()
+		data, err := yaml.Marshal(manifest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(source, "runtime-pack.yaml"), data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeManifest()
+	if err := materializeRuntimePack(source, target); err != nil {
+		t.Fatal(err)
+	}
+	if err := materializeRuntimePack(source, target); err != nil {
+		t.Fatalf("相同内容应可复用: %v", err)
+	}
+	manifest.Wheels[0] = file("runtime.whl", "new build")
+	writeManifest()
+	if err := materializeRuntimePack(source, target); err == nil || !strings.Contains(err.Error(), "内容已改变") {
+		t.Fatalf("同版本不同内容不能假报安装成功: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(target, "runtime.whl"))
+	if err != nil || string(data) != "original" {
+		t.Fatal("拒绝冲突时必须保留已安装文件")
+	}
+}
 
 func TestActivateRuntimeInstallationCopiesSceneResources(t *testing.T) {
 	root := t.TempDir()

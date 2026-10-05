@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"insightos.cn/semantic-framework/internal/bootstrap"
+	"insightos.cn/semantic-framework/internal/store/storetest"
 	"insightos.cn/semantic-framework/pkg/config"
 	"insightos.cn/semantic-framework/pkg/log"
 )
@@ -44,6 +45,7 @@ func startTeamApp(t *testing.T) (httpBase, wsBase string, app *bootstrap.App, st
 	cfg.Server.HTTPAddr = freeAddr(t)
 	cfg.Server.WSAddr = freeAddr(t)
 	cfg.Store.SQLitePath = filepath.Join(t.TempDir(), "test.db")
+	storetest.SeedMigratedAt(t, cfg.Store.SQLitePath)
 	cfg.LLM.Default = "mock" // 无 key 环境：默认模型走 mock 驱动
 	cfg.Agents.ProfilesDir = agentsDir
 	cfg.Agents.TeamsDir = filepath.Join(agentsDir, "teams")

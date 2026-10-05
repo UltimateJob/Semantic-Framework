@@ -33,6 +33,11 @@ import (
 // drafting/failed 记录，也不会偷偷启动第二个 Planner。
 func (s *Service) SubmitPlanProposal(_ context.Context, userID, projectID,
 	conversationID string, requested store.WorkflowDraft, summary string, approvedScope json.RawMessage) (store.PlanProposal, error) {
+	return s.SubmitPlanProposalForRun("", userID, projectID, conversationID, requested, summary, approvedScope)
+}
+
+func (s *Service) SubmitPlanProposalForRun(runID, userID, projectID,
+	conversationID string, requested store.WorkflowDraft, summary string, approvedScope json.RawMessage) (store.PlanProposal, error) {
 	_, _, err := s.requireWritableConversation(userID, projectID, conversationID)
 	if err != nil {
 		return store.PlanProposal{}, err
@@ -48,13 +53,15 @@ func (s *Service) SubmitPlanProposal(_ context.Context, userID, projectID,
 	if err := s.validateMapScope(projectID, requested.MapScope); err != nil {
 		return store.PlanProposal{}, err
 	}
-	ready, err := s.st.SubmitPlanProposal(projectID, conversationID, requested, summary,
+	ready, reused, err := s.st.SubmitPlanProposalForRun(runID, projectID, conversationID, requested, summary,
 		approvedScope, renderPlanDocument(requested, summary, approvedScope), time.Now().UTC())
 	if err != nil {
 		return store.PlanProposal{}, fmt.Errorf("保存 Plan Proposal 失败（tasks=%d, dependencies=%d）: %w",
 			len(requested.Tasks), len(requested.Dependencies), err)
 	}
-	s.publishPlanProposal(ready, "plan_proposal.ready")
+	if !reused {
+		s.publishPlanProposal(ready, "plan_proposal.ready")
+	}
 	return ready, nil
 }
 

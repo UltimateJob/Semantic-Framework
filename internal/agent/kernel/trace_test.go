@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -30,7 +29,7 @@ import (
 	"github.com/cloudwego/eino/schema"
 
 	"insightos.cn/semantic-framework/internal/store"
-	"insightos.cn/semantic-framework/pkg/config"
+	"insightos.cn/semantic-framework/internal/store/storetest"
 	"insightos.cn/semantic-framework/pkg/llm"
 	"insightos.cn/semantic-framework/pkg/log"
 )
@@ -65,18 +64,7 @@ func TestTraceStreamCallbackDoesNotBufferConsumer(t *testing.T) {
 // openKernelTestStore 在临时目录打开一个已迁移的 Store，测试结束自动关闭。
 func openKernelTestStore(t *testing.T) *store.Store {
 	t.Helper()
-	st, err := store.Open(config.StoreConfig{
-		Driver:     "sqlite",
-		SQLitePath: filepath.Join(t.TempDir(), "test.db"),
-	}, log.New(log.Options{Level: log.LevelError, Writer: io.Discard}))
-	if err != nil {
-		t.Fatalf("Open 失败: %v", err)
-	}
-	if err := st.Migrate(); err != nil {
-		t.Fatalf("Migrate 失败: %v", err)
-	}
-	t.Cleanup(func() { _ = st.Close() })
-	return st
+	return storetest.OpenMigrated(t, log.New(log.Options{Level: log.LevelError, Writer: io.Discard}))
 }
 
 // newTestTraceHandler 创建带固定归因参数的测试处理器。

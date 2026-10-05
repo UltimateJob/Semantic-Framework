@@ -20,14 +20,13 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"insightos.cn/semantic-framework/internal/event"
 	"insightos.cn/semantic-framework/internal/server/ws"
 	"insightos.cn/semantic-framework/internal/store"
-	"insightos.cn/semantic-framework/pkg/config"
+	"insightos.cn/semantic-framework/internal/store/storetest"
 	"insightos.cn/semantic-framework/pkg/log"
 )
 
@@ -42,15 +41,7 @@ type testFixture struct {
 func newTestFixture(t *testing.T) *testFixture {
 	t.Helper()
 	logger := log.New(log.Options{Level: log.LevelError, Writer: io.Discard})
-	st, err := store.Open(config.StoreConfig{
-		Driver: "sqlite", SQLitePath: filepath.Join(t.TempDir(), "test.db"),
-	}, logger)
-	if err != nil {
-		t.Fatalf("Open 失败: %v", err)
-	}
-	if err := st.Migrate(); err != nil {
-		t.Fatalf("Migrate 失败: %v", err)
-	}
+	st := storetest.OpenMigrated(t, logger)
 	now := time.Now().UTC()
 	if err := st.CreateChatSession(store.ChatSession{
 		ID: "cs-1", Title: "交互测试", CreatedAt: now, UpdatedAt: now,

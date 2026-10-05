@@ -59,15 +59,20 @@ type RuntimeClient interface {
 
 // HTTPRuntimeClient 通过 Plugin HTTP 接口管理场景、视觉内容和受限 Robot 调试操作。
 type HTTPRuntimeClient struct {
-	endpoint string
-	client   *http.Client
+	endpoint        string
+	client          *http.Client
+	lifecycleClient *http.Client
 }
 
 func NewHTTPRuntimeClient(endpoint string, client *http.Client) *HTTPRuntimeClient {
+	lifecycleClient := client
 	if client == nil {
 		client = &http.Client{Timeout: 15 * time.Second}
+		// reset/stop 包含原生场景资源清理，预算独立于快速状态读取。
+		// 创建仍返回 starting，长时间的就绪等待由 Profile 预算和状态轮询管理。
+		lifecycleClient = &http.Client{Timeout: 90 * time.Second}
 	}
-	return &HTTPRuntimeClient{endpoint: strings.TrimRight(endpoint, "/"), client: client}
+	return &HTTPRuntimeClient{endpoint: strings.TrimRight(endpoint, "/"), client: client, lifecycleClient: lifecycleClient}
 }
 
 func (c *HTTPRuntimeClient) Health(ctx context.Context) error {
@@ -127,6 +132,12 @@ func (c *HTTPRuntimeClient) SceneOperation(
 ) (SceneInstance, error) {
 	var result SceneInstance
 	path := "/api/v1/scene-instances/" + url.PathEscape(instanceID) + "/" + operation
+	if operation == "reset" || operation == "stop" {
+		// 使用请求局部副本，不能修改共享 client 的 Timeout，影响并发查询。
+		lifecycle := *c
+		lifecycle.client = c.lifecycleClient
+		return result, lifecycle.do(ctx, http.MethodPost, path, body, &result)
+	}
 	return result, c.do(ctx, http.MethodPost, path, body, &result)
 }
 

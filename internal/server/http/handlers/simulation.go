@@ -16,6 +16,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -44,16 +45,19 @@ type SimulationProjectStore interface {
 	AddProjectSceneReference(store.ProjectSceneReference) (store.ProjectSceneReference, error)
 	ListProjectSceneReferences(string) ([]store.ProjectSceneReference, error)
 	GetProjectSceneReference(string, string) (store.ProjectSceneReference, error)
+	RemoveProjectSceneReference(string, string) error
 }
 
 // SimulationHandler 是 Studio 仿真工作区的 REST 接入层。
 type SimulationHandler struct {
-	simulation *simulation.Service
-	authoring  *simulation.SceneAuthoringService
-	build      *simulation.SceneBuildService
-	projects   SimulationProjectStore
-	access     SimulationAccess
-	events     projectEventBus
+	reloadResources  func(context.Context) error
+	uninstallRuntime func(context.Context, string) error
+	simulation       *simulation.Service
+	authoring        *simulation.SceneAuthoringService
+	build            *simulation.SceneBuildService
+	projects         SimulationProjectStore
+	access           SimulationAccess
+	events           projectEventBus
 }
 
 func NewSimulationHandler(

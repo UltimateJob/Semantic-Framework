@@ -62,8 +62,12 @@ spec:
 	}
 }
 
-func TestLoadCatalogRejectsEmptyStore(t *testing.T) {
-	if _, err := LoadCatalog(t.TempDir()); err == nil {
-		t.Fatal("空 Bundle Store 不应启用受管 Robot Runtime")
+func TestLoadCatalogAllowsInstallationBeforeRobotStart(t *testing.T) {
+	catalog, err := LoadCatalog(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := catalog.Resolve(MatchKey{RobotModel: "test", Backend: "fake", BackendProfile: "test"}); err == nil {
+		t.Fatal("安装前仍不能启动 Robot")
 	}
 }

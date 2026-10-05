@@ -139,7 +139,9 @@ func (s *AbilityDebugService) Stop(ctx context.Context, id, reason string) (Abil
 	if err != nil {
 		return execution, err
 	}
-	if abilityDebugTerminal(execution.Status) {
+	// An interrupted stop still owns the robot. Allow an explicit retry to
+	// obtain fresh stop evidence from the original Ability invocation.
+	if abilityDebugTerminal(execution.Status) && execution.Status != "interrupted" {
 		return execution, nil
 	}
 	execution.Status = "stopping"

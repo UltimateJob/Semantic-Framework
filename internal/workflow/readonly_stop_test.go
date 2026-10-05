@@ -17,6 +17,7 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -105,9 +106,18 @@ func TestStopFailedExecutionClassifiesPhysicalEvidence(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+					// 普通 stop 对"物理状态未知"必须明确失败，让前端走人工确认；
+					// 不能返回 200 让界面以为已经停住。
 					_, err = service.StopWorkflow(context.Background(), project.OwnerID, project.ID, view.Workflow.ID, current.Revision)
-					if err != nil {
-						t.Fatal(err)
+					if tc.wantStopped {
+						if err != nil {
+							t.Fatal(err)
+						}
+					} else {
+						if !errors.Is(err, store.ErrOperatorConfirmationRequired) {
+							t.Fatalf("物理状态未知必须要求人工确认: %v", err)
+						}
+						err = nil
 					}
 				}
 				if err != nil {

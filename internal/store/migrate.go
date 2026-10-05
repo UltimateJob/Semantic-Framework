@@ -69,6 +69,18 @@ var migrations = []migration{
 	{version: 31, name: "select_runtime_installation_at_scene_start", apply: migrateV31},
 	{version: 32, name: "create_trace_span_io", apply: migrateV32},
 	{version: 33, name: "converge_trace_io_and_conversation_robot_reservation", apply: migrateV33},
+	{version: 34, name: "idempotent_plan_proposal_submission_per_run", apply: migrateV34},
+}
+
+func migrateV34(tx *sql.Tx) error {
+	_, err := tx.Exec(`CREATE TABLE plan_proposal_submissions (
+		run_id TEXT PRIMARY KEY,
+		proposal_id TEXT NOT NULL,
+		proposal_revision INTEGER NOT NULL,
+		created_at TIMESTAMP NOT NULL,
+		FOREIGN KEY(proposal_id) REFERENCES plan_proposals(id)
+	)`)
+	return err
 }
 
 // Both development branches used v32. Keep the published Trace migration and

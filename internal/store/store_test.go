@@ -34,19 +34,7 @@ func testLogger() *log.Logger {
 // openTestStore 在临时目录打开一个已迁移的 Store，测试结束自动关闭。
 func openTestStore(t *testing.T) *Store {
 	t.Helper()
-	cfg := config.StoreConfig{
-		Driver:     driverSQLite,
-		SQLitePath: filepath.Join(t.TempDir(), "test.db"),
-	}
-	st, err := Open(cfg, testLogger())
-	if err != nil {
-		t.Fatalf("Open 失败: %v", err)
-	}
-	if err := st.Migrate(); err != nil {
-		t.Fatalf("Migrate 失败: %v", err)
-	}
-	t.Cleanup(func() { _ = st.Close() })
-	return st
+	return openMigratedStore(t)
 }
 
 // TestOpenUnsupportedDriver 验证非 sqlite 驱动直接报错（首版仅支持 sqlite）。

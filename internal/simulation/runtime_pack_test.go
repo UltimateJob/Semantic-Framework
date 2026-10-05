@@ -85,6 +85,17 @@ func TestRuntimePackStrictIntegrityAndContentRequirements(t *testing.T) {
 	if loaded.Runner != "native-mujoco" || len(loaded.Files()) != 7 {
 		t.Fatalf("manifest=%+v", loaded)
 	}
+	// 独立引擎包不需要场景目录或任意具体任务的 smoke 输入。
+	manifest.SceneCatalog = RuntimePackFile{}
+	manifest.SmokeRequest = RuntimePackFile{}
+	manifest.SmokeSceneKey = ""
+	encoded, _ = yaml.Marshal(manifest)
+	if err := os.WriteFile(filepath.Join(root, "runtime-pack.yaml"), encoded, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadRuntimePack(root); err != nil {
+		t.Fatal("独立 Runtime 加载失败", err)
+	}
 
 	if err := os.WriteFile(filepath.Join(root, "wheels/runtime.whl"), []byte("tampered"), 0o600); err != nil {
 		t.Fatal(err)
@@ -121,5 +132,23 @@ func TestRuntimeContentEnvironmentNativePaths(t *testing.T) {
 		if _, err := RuntimeContentEnvironment(map[string]string{"mujoco_assets": value}); err == nil {
 			t.Fatalf("accepted non-absolute content path %q", value)
 		}
+	}
+}
+
+func TestBehaviorRuntimeUsesIsolatedRunnerAndNativeData(t *testing.T) {
+	executable, err := RuntimeRunnerExecutable("/runtime-env", "behavior-omnigibson")
+	if err != nil || executable != "/runtime-env/bin/semantic-isaac-runtime" {
+		t.Fatalf("Isaac Runtime 入口错误: %s %v", executable, err)
+	}
+	env, err := RuntimeContentEnvironment(map[string]string{"behavior_data": "/native/data"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, item := range env {
+		found = found || item == "OMNIGIBSON_DATA_PATH=/native/data"
+	}
+	if !found {
+		t.Fatal("未传递原生资产目录")
 	}
 }

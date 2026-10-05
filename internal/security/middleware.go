@@ -20,6 +20,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
@@ -152,7 +153,11 @@ func (m *Middleware) WrapToolCall(ctx context.Context, meta kernel.ToolCallMeta,
 	}
 
 	// L2 参数校验：jsonschema 结构校验（类型/必填/枚举）。
-	if err := m.validate(meta.Name, argsJSON); err != nil {
+	checkStart := time.Now()
+	validationErr := m.validate(meta.Name, argsJSON)
+	m.logger.Info("agent.contract.tool_check", "tool", meta.Name, "call_id", meta.CallID,
+		"duration_ns", time.Since(checkStart).Nanoseconds(), "valid", validationErr == nil)
+	if err := validationErr; err != nil {
 		m.logger.Info("工具调用被参数校验拦截",
 			"tool", meta.Name, "call_id", meta.CallID, "error", err.Error())
 		return tool.ErrorResult(CodeParamViolation, err.Error(), false), nil

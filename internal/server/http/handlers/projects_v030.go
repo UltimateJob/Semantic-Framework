@@ -221,6 +221,9 @@ func (h *ProjectsHandler) writeV030Error(w http.ResponseWriter, err error, messa
 		writeError(w, http.StatusGone, "PROJECT_ARCHIVED", "Project 已归档")
 	case errors.Is(err, store.ErrInvalidState):
 		writeError(w, http.StatusUnprocessableEntity, "INVALID_STATE", "请求内容或当前状态不允许此操作")
+	case errors.Is(err, store.ErrOperatorConfirmationRequired):
+		writeError(w, http.StatusConflict, "OPERATOR_CONFIRMATION_REQUIRED",
+			"执行物理状态未知，请确认现场机器人已安全保持后再终结 Workflow")
 	default:
 		h.internalError(w, message, err)
 	}

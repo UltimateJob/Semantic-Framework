@@ -80,11 +80,24 @@ type Service struct {
 
 	// logger 结构化日志器。
 	logger *log.Logger
+
+	// tokenLifetime 在启动时配置，签发和续期使用相同有效期。
+	tokenLifetime time.Duration
 }
 
 // NewService 创建认证服务。
 func NewService(st *store.Store, logger *log.Logger) *Service {
-	return &Service{store: st, logger: logger}
+	return &Service{store: st, logger: logger, tokenLifetime: tokenTTL}
+}
+
+// SetTokenTTL 设置新令牌的有效期，须在启动接收请求前调用。
+// 已签发令牌继续沿用各自持久化的到期时间。
+func (s *Service) SetTokenTTL(ttl time.Duration) error {
+	if ttl <= 0 {
+		return fmt.Errorf("access_token_ttl 必须大于零")
+	}
+	s.tokenLifetime = ttl
+	return nil
 }
 
 // SeedAdmin 在系统尚无 admin 用户时创建种子用户，重复调用幂等。
@@ -150,13 +163,13 @@ func (s *Service) Login(username, password string) (string, error) {
 	return token, nil
 }
 
-// IssueToken 为指定用户签发新 token：32 字节随机数的十六进制串，有效期 24h。
+// IssueToken 为指定用户签发新 token：32 字节随机数的十六进制串，使用当前配置的有效期。
 func (s *Service) IssueToken(userID string) (string, error) {
 	now := time.Now().UTC()
 	t := store.Token{
 		Token:     randomHex(32),
 		UserID:    userID,
-		ExpiresAt: now.Add(tokenTTL),
+		ExpiresAt: now.Add(s.tokenLifetime),
 		CreatedAt: now,
 	}
 	if err := s.store.CreateToken(t); err != nil {

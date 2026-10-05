@@ -242,6 +242,14 @@ func installRuntime(target string, force bool) (created bool, skipped int, err e
 	cfg.Simulation.RuntimesDir = runtimeDir
 	cfg.Simulation.CatalogDir = sceneCatalogDir
 	cfg.Skills.Dir = filepath.Join(configDir, "skills")
+	// 新安装先启动空的受管目录，导入 Robot 包后可直接创建实例；所有路径
+	// 跟随安装根目录，与执行 semantic-server 时的当前工作目录无关。
+	cfg.RobotRuntime.Enabled = true
+	cfg.RobotRuntime.DataRoot = filepath.Dir(dataDir)
+	cfg.RobotRuntime.BundlesDir = filepath.Join(filepath.Dir(dataDir), "robot-bundles")
+	if err := os.MkdirAll(cfg.RobotRuntime.BundlesDir, 0750); err != nil {
+		return false, skipped, err
+	}
 	body, err := yaml.Marshal(cfg)
 	if err != nil {
 		return false, skipped, fmt.Errorf("生成安装配置失败: %w", err)

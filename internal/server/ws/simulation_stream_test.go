@@ -21,7 +21,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -30,8 +29,7 @@ import (
 
 	"insightos.cn/semantic-framework/internal/server/auth"
 	"insightos.cn/semantic-framework/internal/simulation"
-	"insightos.cn/semantic-framework/internal/store"
-	"insightos.cn/semantic-framework/pkg/config"
+	"insightos.cn/semantic-framework/internal/store/storetest"
 	"insightos.cn/semantic-framework/pkg/log"
 )
 
@@ -87,16 +85,7 @@ func TestSimulationStreamGatewayForwardsLargePoseFrame(t *testing.T) {
 	defer upstream.Close()
 
 	logger := log.New(log.Options{Level: log.LevelError, Writer: io.Discard})
-	st, err := store.Open(config.StoreConfig{
-		Driver: "sqlite", SQLitePath: filepath.Join(t.TempDir(), "stream.db"),
-	}, logger)
-	if err != nil {
-		t.Fatalf("打开认证存储失败: %v", err)
-	}
-	defer func() { _ = st.Close() }()
-	if err := st.Migrate(); err != nil {
-		t.Fatalf("迁移认证存储失败: %v", err)
-	}
+	st := storetest.OpenMigrated(t, logger)
 	t.Setenv("SEMANTIC_ADMIN_PASSWORD", "s3cret")
 	authService := auth.NewService(st, logger)
 	if err := authService.SeedAdmin(); err != nil {

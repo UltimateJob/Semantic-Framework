@@ -951,6 +951,13 @@ func (s *Store) ListSubTasks(taskID string) ([]SubTask, error) {
 	return listSubTasksQuery(s.db, taskID)
 }
 
+// ValidateSubTaskDrafts checks the same graph contract used at persistence time,
+// without assigning IDs into the caller's plan. Agent review can therefore
+// reject an invalid plan inside its correction loop, not after that loop exits.
+func ValidateSubTaskDrafts(items []SubTaskDraft) error {
+	return validateSubTaskDrafts(append([]SubTaskDraft(nil), items...))
+}
+
 func validateSubTaskDrafts(items []SubTaskDraft) error {
 	if len(items) == 0 {
 		return ErrInvalidState

@@ -118,8 +118,8 @@ func TestCancelRunByIDTransitionsAndPublishes(t *testing.T) {
 	}()
 	select {
 	case <-model.started:
-	case <-time.After(3 * time.Second):
-		t.Fatal("Run 未进入模型")
+	case <-time.After(runtimeEventWait):
+		t.Fatalf("Run 未在 %s 内进入模型", runtimeEventWait)
 	}
 	sessions, err := fx.st.ListChatSessionsByUser("usr-1")
 	if err != nil || len(sessions) != 1 {
@@ -150,8 +150,8 @@ func TestCancelRunByIDTransitionsAndPublishes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("用户取消应正常收尾: %v", err)
 		}
-	case <-time.After(3 * time.Second):
-		t.Fatal("取消后 Run 未收尾")
+	case <-time.After(runtimeEventWait):
+		t.Fatalf("取消后 Run 未在 %s 内收尾", runtimeEventWait)
 	}
 	cancelled, err := fx.st.GetRunSession(run.ID)
 	if err != nil || cancelled.Status != store.RunStatusCancelled ||

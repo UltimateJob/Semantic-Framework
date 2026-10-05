@@ -22,21 +22,13 @@ import (
 	"time"
 
 	"insightos.cn/semantic-framework/internal/robotruntime"
-	"insightos.cn/semantic-framework/pkg/config"
 )
 
 func TestRobotRuntimeStoreSurvivesServerRestart(t *testing.T) {
 	ctx := context.Background()
 	path := filepath.Join(t.TempDir(), "server.db")
 	open := func() *Store {
-		st, err := Open(config.StoreConfig{Driver: driverSQLite, SQLitePath: path}, testLogger())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := st.Migrate(); err != nil {
-			t.Fatal(err)
-		}
-		return st
+		return openMigratedStoreAt(t, path)
 	}
 	st := open()
 	now := time.Now().UTC()

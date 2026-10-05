@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"insightos.cn/semantic-framework/internal/bootstrap"
+	"insightos.cn/semantic-framework/internal/store/storetest"
 	"insightos.cn/semantic-framework/pkg/config"
 	"insightos.cn/semantic-framework/pkg/llm"
 	"insightos.cn/semantic-framework/pkg/log"
@@ -96,6 +97,7 @@ func startSettingsAppWithLeaderModel(t *testing.T, configPath, leaderModel strin
 	cfg.Server.HTTPAddr = freeAddr(t)
 	cfg.Server.WSAddr = freeAddr(t)
 	cfg.Store.SQLitePath = filepath.Join(t.TempDir(), "settings-it.db")
+	storetest.SeedMigratedAt(t, cfg.Store.SQLitePath)
 	cfg.Agents.ProfilesDir = profilesDir
 	logger := log.New(log.Options{Level: log.LevelError, Writer: io.Discard})
 

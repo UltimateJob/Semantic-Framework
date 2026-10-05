@@ -399,7 +399,9 @@ func (s *EventStream) pump(ctx context.Context, iter *adk.AsyncIterator[*adk.Age
 		}
 		if ev.Err != nil {
 			failed = true
-			s.ch <- Event{Kind: EventError, Err: ev.Err}
+			// A policy may terminate the run before the next model call. Preserve
+			// usage from the completed model round for that terminal event.
+			s.ch <- Event{Kind: EventError, Err: ev.Err, Turns: turns, Usage: usage}
 			continue
 		}
 		if ev.Action != nil && ev.Action.Interrupted != nil {
@@ -451,7 +453,10 @@ func (s *EventStream) pump(ctx context.Context, iter *adk.AsyncIterator[*adk.Age
 			drainStream(mv)
 		}
 	}
-	if s.waitTraces != nil {
+	// 中断后同一 TraceHandler 会在 Resume 上继续 Add 流式回调。
+	// 这里若 Wait，会和 Resume 的 WaitGroup.Add 重叠，触发 -race。
+	// 未完成的 drain 由 Resume 终态的 Wait 一并收口。
+	if s.waitTraces != nil && !interrupted {
 		s.waitTraces()
 	}
 	if !interrupted {

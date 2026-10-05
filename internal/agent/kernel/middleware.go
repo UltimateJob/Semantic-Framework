@@ -218,6 +218,16 @@ type toolPolicyMiddleware struct {
 	nameMap map[string]string
 }
 
+func (m *toolPolicyMiddleware) BeforeModelRewriteState(ctx context.Context, state *adk.ChatModelAgentState,
+	_ *adk.ModelContext) (context.Context, *adk.ChatModelAgentState, error) {
+	if guard, ok := m.guard.(ModelRoundGuard); ok {
+		if err := guard.BeforeModelRound(ctx); err != nil {
+			return ctx, state, err
+		}
+	}
+	return ctx, state, nil
+}
+
 func (m *toolPolicyMiddleware) WrapInvokableToolCall(_ context.Context,
 	endpoint adk.InvokableToolCallEndpoint, tCtx *adk.ToolContext) (adk.InvokableToolCallEndpoint, error) {
 	name := tCtx.Name

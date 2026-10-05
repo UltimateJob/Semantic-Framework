@@ -280,6 +280,24 @@ func (s *Store) GetActiveProject(ownerID string) (Project, error) {
 	return project, nil
 }
 
+// ListDevelopmentProjects 仅供 Server 扫描项目投递目录；HTTP 仍按用户校验所有权。
+func (s *Store) ListDevelopmentProjects() ([]Project, error) {
+	rows, err := s.db.Query(`SELECT ` + projectSelectColumns + ` FROM projects WHERE archived_at IS NULL AND mode = 'development' ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	projects := []Project{}
+	for rows.Next() {
+		project, err := scanProject(rows)
+		if err != nil {
+			return nil, err
+		}
+		projects = append(projects, project)
+	}
+	return projects, rows.Err()
+}
+
 // ListProjects 返回当前用户的 Project，默认不返回已归档项目。
 func (s *Store) ListProjects(ownerID string, includeArchived bool) ([]Project, error) {
 	query := `SELECT ` + projectSelectColumns + ` FROM projects WHERE owner_id = ?`

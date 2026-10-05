@@ -55,6 +55,13 @@ type ToolCallGuard interface {
 	WrapToolCall(ctx context.Context, meta ToolCallMeta, argsJSON string, next ToolCallEndpoint) (string, error)
 }
 
+// ModelRoundGuard is optional on ToolPolicy. It runs once before each logical
+// model exchange, after the preceding tool batch has finished. Network retries
+// of that same exchange are not new feedback rounds. It must never replay tools.
+type ModelRoundGuard interface {
+	BeforeModelRound(context.Context) error
+}
+
 // InterruptToolCall 在工具调用路径上发起中断：暂停当前 run 并把断点
 // 持久化（Run 需携带 checkpoint ID），等待外部输入后经 Runner.Resume 恢复。
 // info 是随中断传递的负载（如安全审批请求），会进 checkpoint（gob 编码，

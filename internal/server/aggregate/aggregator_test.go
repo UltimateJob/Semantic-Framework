@@ -19,7 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -27,7 +26,7 @@ import (
 	"insightos.cn/semantic-framework/internal/event"
 	"insightos.cn/semantic-framework/internal/server/ws"
 	"insightos.cn/semantic-framework/internal/store"
-	"insightos.cn/semantic-framework/pkg/config"
+	"insightos.cn/semantic-framework/internal/store/storetest"
 	"insightos.cn/semantic-framework/pkg/log"
 )
 
@@ -120,17 +119,7 @@ func (f *fakeSink) snapshot() []ws.Envelope {
 // openEventStore 在临时目录打开一个已迁移的 store.Store。
 func openEventStore(t *testing.T) *store.Store {
 	t.Helper()
-	st, err := store.Open(config.StoreConfig{
-		Driver:     "sqlite",
-		SQLitePath: filepath.Join(t.TempDir(), "events.db"),
-	}, testLogger())
-	if err != nil {
-		t.Fatalf("Open 失败: %v", err)
-	}
-	if err := st.Migrate(); err != nil {
-		t.Fatalf("Migrate 失败: %v", err)
-	}
-	t.Cleanup(func() { _ = st.Close() })
+	st := storetest.OpenMigrated(t, testLogger())
 	return st
 }
 

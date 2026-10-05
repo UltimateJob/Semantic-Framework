@@ -84,7 +84,7 @@ func (p *planEntry) SubmitPlanProposal(ctx context.Context,
 	if service == nil {
 		return store.PlanProposal{}, workflow.ErrPlannerUnavailable
 	}
-	return service.SubmitPlanProposal(ctx, request.UserID, request.ProjectID, request.SessionID,
+	return service.SubmitPlanProposalForRun(request.RunID, request.UserID, request.ProjectID, request.SessionID,
 		store.WorkflowDraft{Goal: request.Goal, Constraints: request.Constraints,
 			CompletionCriteria: request.CompletionCriteria, MapScope: request.MapBinding,
 			Tasks: request.Tasks, Dependencies: request.Dependencies}, request.Summary, request.ApprovedScope)

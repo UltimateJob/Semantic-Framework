@@ -118,6 +118,27 @@ func TestRunnerReleasesPhysicalLockAfterConfirmedStartRejection(t *testing.T) {
 	}
 }
 
+func TestRunnerStopsInterruptedActionWithoutReplaying(t *testing.T) {
+	client := &fakeAbilityClient{startErr: errors.New("lost acknowledgement"), stopErr: errors.New("offline")}
+	runner := NewRunner(testCatalog(), client)
+	first, _ := runner.StartAction(context.Background(), actionRequest("navigation.follow_route", "unknown"))
+	if _, err := runner.Stop(context.Background(), first.ID, "user"); err == nil {
+		t.Fatal("停止未确认必须报告错误并保留锁")
+	}
+	if runner.physicalOwner("r1") != first.ID {
+		t.Fatal("未确认时丢失原执行")
+	}
+	client.stopErr = nil
+	client.stopState = AbilityExecution{Status: "stopped"}
+	stopped, err := runner.Stop(context.Background(), first.ID, "retry")
+	if err != nil || stopped.Status != ActionStopped || runner.physicalOwner("r1") != "" {
+		t.Fatalf("重试停止没有释放已确认的物理锁: %#v %v", stopped, err)
+	}
+	if client.startCalls != 1 {
+		t.Fatal("停止不允许重放动作")
+	}
+}
+
 func TestRunnerReconcilesExplicitFailedExecutionAfterStartError(t *testing.T) {
 	client := &fakeAbilityClient{
 		startErr: errors.New("Ability Task failed"),

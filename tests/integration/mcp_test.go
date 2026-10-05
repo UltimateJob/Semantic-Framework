@@ -35,6 +35,7 @@ import (
 
 	"insightos.cn/semantic-framework/internal/bootstrap"
 	"insightos.cn/semantic-framework/internal/mcpregistry"
+	"insightos.cn/semantic-framework/internal/store/storetest"
 	"insightos.cn/semantic-framework/pkg/config"
 	"insightos.cn/semantic-framework/pkg/log"
 	"insightos.cn/semantic-framework/pkg/mcp"
@@ -191,6 +192,7 @@ func startMCPApp(t *testing.T, dbPath, mcpEndpoint, profilesDir string) (httpBas
 	cfg.Server.HTTPAddr = freeAddr(t)
 	cfg.Server.WSAddr = freeAddr(t)
 	cfg.Store.SQLitePath = dbPath
+	storetest.SeedMigratedAt(t, cfg.Store.SQLitePath)
 	cfg.LLM.Default = "mock"
 	cfg.Agents.ProfilesDir = profilesDir
 	cfg.MCPServers = []config.MCPServerConfig{{

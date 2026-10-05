@@ -17,8 +17,52 @@ package simulation
 
 import (
 	"context"
+	"errors"
 	"testing"
 )
+
+func TestSwitchVariantRejectsLoadingBeforeCheckpoint(t *testing.T) {
+	service, client, store, instance := newInterruptedSnapshotFixture(t)
+	state, _ := store.LoadRuntimeState("project-interrupted")
+	state.CatalogSceneID, state.SceneVersion = "catalog-scene", "1.0.0"
+	if err := store.SaveRuntimeState(state); err != nil {
+		t.Fatal(err)
+	}
+	client.instance.State = "starting"
+	client.calls = nil
+	_, err := service.SwitchCatalogVariant(context.Background(), "project-interrupted", instance.InstanceID, "init-1", "switch", 0)
+	if !errors.Is(err, ErrConflict) {
+		t.Fatalf("加载中应明确拒绝切换: %v", err)
+	}
+	if len(client.calls) != 0 {
+		t.Fatalf("加载中不应执行停止/重置: %v", client.calls)
+	}
+}
+
+func TestSnapshotReadsEngineDataOnlyWhenSceneReady(t *testing.T) {
+	for _, status := range []string{"starting", "resetting", "stopping", "failed", "running", "paused"} {
+		t.Run(status, func(t *testing.T) {
+			service, client, store, _ := newInterruptedSnapshotFixture(t)
+			client.instance.State = status
+			client.robotReads, client.evaluationReads = 0, 0
+			snapshot, err := service.Snapshot(context.Background(), "project-interrupted")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if snapshot.Instance == nil || snapshot.Instance.State != status {
+				t.Fatalf("生命周期状态未及时返回: %+v", snapshot)
+			}
+			ready := status == "running" || status == "paused"
+			if ready && client.robotReads != 1 || !ready && (client.robotReads != 0 || client.evaluationReads != 0) {
+				t.Fatalf("%s 阶段引擎读取次数不正确: robot=%d evaluation=%d", status, client.robotReads, client.evaluationReads)
+			}
+			persisted, _ := store.LoadRuntimeState("project-interrupted")
+			if persisted.LastInstance.State != status {
+				t.Fatal("跳过引擎数据时仍须保存最新生命周期状态")
+			}
+		})
+	}
+}
 
 func newInterruptedSnapshotFixture(t *testing.T) (*Service, *fakeRuntimeClient, *memoryRuntimeStateStore, SceneInstance) {
 	t.Helper()

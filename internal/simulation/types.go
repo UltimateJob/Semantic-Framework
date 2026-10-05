@@ -29,6 +29,7 @@ import (
 // RuntimeCapability 描述 Runtime profile 能提供的功能。
 // Studio 和 Framework 必须依据这些字段显示或拒绝功能，不能根据名称猜测。
 type RuntimeCapability struct {
+	ScenePreviews     bool     `json:"scene_previews" yaml:"scene_previews"`
 	EditableScene     bool     `json:"editable_scene" yaml:"editable_scene"`
 	NativeEvaluator   bool     `json:"native_evaluator" yaml:"native_evaluator"`
 	Viewer            bool     `json:"viewer" yaml:"viewer"`
@@ -45,18 +46,21 @@ type RuntimeCapability struct {
 // Environment、Available 和 Capabilities 必须使用 Runtime 实际返回的结果，不能
 // 用 Framework 的静态配置把缺失依赖或未安装 Loader 伪装成可用。
 type RuntimeProfile struct {
-	RuntimeProfileID  string            `json:"runtime_profile_id" yaml:"runtime_profile_id"`
-	Name              string            `json:"name" yaml:"name"`
-	Engine            string            `json:"engine" yaml:"engine"`
-	Loader            string            `json:"loader" yaml:"loader"`
-	APIVersion        string            `json:"api_version" yaml:"api_version"`
-	SceneKinds        []string          `json:"scene_kinds" yaml:"scene_kinds"`
-	Capabilities      RuntimeCapability `json:"capabilities" yaml:"capabilities"`
-	Environment       string            `json:"environment,omitempty" yaml:"environment,omitempty"`
-	EnvironmentReady  bool              `json:"environment_ready" yaml:"environment_ready"`
-	Available         bool              `json:"available" yaml:"available"`
-	AvailabilityKnown bool              `json:"availability_known" yaml:"availability_known"`
-	UnavailableReason string            `json:"unavailable_reason,omitempty" yaml:"unavailable_reason,omitempty"`
+	RuntimeProfileID string   `json:"runtime_profile_id" yaml:"runtime_profile_id"`
+	Name             string   `json:"name" yaml:"name"`
+	Engine           string   `json:"engine" yaml:"engine"`
+	Loader           string   `json:"loader" yaml:"loader"`
+	APIVersion       string   `json:"api_version" yaml:"api_version"`
+	SceneKinds       []string `json:"scene_kinds" yaml:"scene_kinds"`
+	// SceneStartTimeoutSeconds 是原生场景加载预算；未声明时保留现有三分钟。
+	// 由 Runtime Profile 声明，Framework 不按引擎或任务名称猜测加载成本。
+	SceneStartTimeoutSeconds int               `json:"scene_start_timeout_seconds,omitempty" yaml:"scene_start_timeout_seconds,omitempty"`
+	Capabilities             RuntimeCapability `json:"capabilities" yaml:"capabilities"`
+	Environment              string            `json:"environment,omitempty" yaml:"environment,omitempty"`
+	EnvironmentReady         bool              `json:"environment_ready" yaml:"environment_ready"`
+	Available                bool              `json:"available" yaml:"available"`
+	AvailabilityKnown        bool              `json:"availability_known" yaml:"availability_known"`
+	UnavailableReason        string            `json:"unavailable_reason,omitempty" yaml:"unavailable_reason,omitempty"`
 }
 
 // RuntimeInfo 是 Studio 可见的 Runtime 当前状态。
@@ -89,6 +93,7 @@ type SceneDescriptor struct {
 
 // SceneStartRequest 是 Framework 接收的场景启动参数。
 type SceneStartRequest struct {
+	SceneContentRoot      string `json:"scene_content_root,omitempty"`
 	RequestID             string `json:"request_id"`
 	RuntimeProfileID      string `json:"runtime_profile_id,omitempty"`
 	RuntimeInstallationID string `json:"runtime_installation_id,omitempty"`
@@ -122,8 +127,10 @@ type SceneInstance struct {
 }
 
 type ViewerSceneCamera struct {
-	CameraID       string     `json:"camera_id"`
-	Name           string     `json:"name"`
+	CameraID string `json:"camera_id"`
+	Name     string `json:"name"`
+	// RenderNodeID 可选：相机跟随 GLB 中的动态节点；为空保留原有世界坐标相机。
+	RenderNodeID   string     `json:"render_node_id,omitempty"`
 	Position       [3]float64 `json:"position"`
 	QuaternionXYZW [4]float64 `json:"quaternion_xyzw"`
 	FOVY           float64    `json:"fovy"`
@@ -138,6 +145,7 @@ type ViewerScene struct {
 	PoseStreamURL    string              `json:"pose_stream_url"`
 	DynamicNodeOrder []string            `json:"dynamic_node_order"`
 	Cameras          []ViewerSceneCamera `json:"cameras"`
+	DefaultCameraID  string              `json:"default_camera_id,omitempty"`
 }
 
 type SourceLink struct {

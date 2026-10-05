@@ -58,6 +58,18 @@ type Orchestrator struct {
 	robotLocks map[string]*sync.Mutex
 }
 
+// ReloadCatalog 只更新后续启动的 Bundle 选择；已运行实例继续持有原始版本。
+func (o *Orchestrator) ReloadCatalog(root string) error {
+	next, err := LoadCatalog(root)
+	if err != nil {
+		return err
+	}
+	o.catalog.mu.Lock()
+	defer o.catalog.mu.Unlock()
+	o.catalog.bundles = next.bundles
+	return nil
+}
+
 func NewOrchestrator(config OrchestratorConfig) (*Orchestrator, error) {
 	if config.Catalog == nil || config.Store == nil || config.Ports == nil || config.Launcher == nil {
 		return nil, errors.New("Robot Runtime Orchestrator 缺少 Catalog、Store、PortLeaser 或 Launcher")
@@ -253,7 +265,7 @@ func (o *Orchestrator) ReclaimInterruptedSimulation(
 	if err != nil {
 		return RuntimeInstance{}, err
 	}
-	if instance.Status != StateInterrupted || instance.Backend != "mujoco" ||
+	if instance.Status != StateInterrupted || (instance.Backend != "mujoco" && instance.Backend != "isaac") ||
 		strings.TrimSpace(nextSceneInstanceID) == "" ||
 		(instance.SceneInstanceID == nextSceneInstanceID && !runtimeHoldConfirmed) {
 		return instance, fmt.Errorf(

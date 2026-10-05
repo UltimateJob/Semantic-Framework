@@ -991,7 +991,20 @@ func (s *Service) settleTerminalExecutionForStop(taskID string, subTask store.Su
 		if err != nil {
 			return true, err
 		}
-		if safe || !started {
+		held, err := s.robotExecutionSafelyHeld(execution.ID)
+		if err != nil {
+			return true, err
+		}
+		if safe || held {
+			// Ability 已证明机器人安全保持（含策略超时/异常自终止）：任务失败
+			// 是业务结论，物理状态却可判定，直接收敛 stopped 而不是要求人工对账。
+			_, err = s.st.TransitionSubTask(subTask.ID, subTask.Revision,
+				store.TaskStatusStopped, "robot_execution_failed_but_held",
+				robotExecutionResult(execution, "execution.terminal", execution.Error),
+				time.Now().UTC())
+			return true, err
+		}
+		if !started {
 			// Worker 在物理 Action 前失败（可能已拍照/查询）时，Robot
 			// 没有活动物理命令。对一个 terminal execution 再发 robot.stop
 			// 只会得到 ErrExecutionNotActive，并把 Workflow 永久卡在 stopping。

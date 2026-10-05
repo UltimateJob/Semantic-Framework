@@ -126,7 +126,7 @@ func TestHTTPRuntimeClientWithRealProfileRuntime(t *testing.T) {
 		t.Fatalf("读取虚拟 Robot 失败: %v", err)
 	}
 	if len(robots) != 1 || robots[0].BackendProfile != info.RuntimeProfileID ||
-		robots[0].SDKPackage != "robot-sdk-franka" || len(robots[0].JointNames) != 7 {
+		robots[0].SDKPackage != "semantic-robot-sdk-franka" || robots[0].Backend != "mujoco" || len(robots[0].JointNames) != 7 {
 		t.Fatalf("Franka Robot 描述与 Profile 不一致: %+v", robots)
 	}
 	robotState, err := client.RobotState(ctx, robots[0].RobotID)

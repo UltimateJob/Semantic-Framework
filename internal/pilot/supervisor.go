@@ -30,6 +30,9 @@ import (
 	"sync/atomic"
 )
 
+// Complete joint trajectories are carried in a single JSON-RPC line.
+const maxWorkerMessageBytes = 8 * 1024 * 1024
+
 type rpcMessage struct {
 	JSONRPC string         `json:"jsonrpc"`
 	ID      any            `json:"id,omitempty"`
@@ -55,6 +58,9 @@ type WorkerSupervisor struct {
 type WorkerProcess struct {
 	command *exec.Cmd
 	stdin   io.WriteCloser
+	// Captured once from the installed Python input_model before Start returns.
+	// This is not synthesized from documentation or examples.
+	inputSchema map[string]any
 
 	writeMu   sync.Mutex
 	pendingMu sync.Mutex
@@ -130,7 +136,7 @@ func (s WorkerSupervisor) Start(ctx context.Context, definition SkillDefinition)
 			return nil, fmt.Errorf("worker first message is %q, expected ready", message.Method)
 		}
 		process.markRequestHandled(message.requestSequence)
-		_, initErr := process.Call(ctx, "worker.initialize", map[string]any{
+		initialized, initErr := process.Call(ctx, "worker.initialize", map[string]any{
 			"name":    definition.Name,
 			"version": definition.Version,
 			"runtime": map[string]any{
@@ -146,6 +152,9 @@ func (s WorkerSupervisor) Start(ctx context.Context, definition SkillDefinition)
 		if initErr != nil {
 			_ = process.Kill()
 			return nil, fmt.Errorf("initialize worker: %w", initErr)
+		}
+		if result, ok := initialized.(map[string]any); ok {
+			process.inputSchema, _ = result["input_schema"].(map[string]any)
 		}
 		return process, nil
 	case <-process.done:
@@ -288,7 +297,7 @@ func (p *WorkerProcess) write(message rpcMessage) error {
 
 func (p *WorkerProcess) readStdout(reader io.Reader) {
 	scanner := bufio.NewScanner(reader)
-	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	scanner.Buffer(make([]byte, 64*1024), maxWorkerMessageBytes)
 	for scanner.Scan() {
 		var message rpcMessage
 		if err := json.Unmarshal(scanner.Bytes(), &message); err != nil || message.JSONRPC != "2.0" {

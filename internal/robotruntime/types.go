@@ -126,6 +126,12 @@ type Bundle struct {
 	Version string   `json:"version" yaml:"version"`
 	Path    string   `json:"path" yaml:"path"`
 	Match   MatchKey `json:"match" yaml:"match"`
+
+	// ReadinessTimeout 来自 bundle.yaml 的 spec.runtime.readinessTimeout。
+	// 冷启动要加载大模型的 Bundle（如 Franka + SmolVLA）比普通仿真 Bundle
+	// 需要更长的收敛时间，所以由包自带而不是全局限定；零值表示未声明，
+	// 由调用方回退到默认值。
+	ReadinessTimeout time.Duration `json:"readiness_timeout,omitempty" yaml:"readiness_timeout,omitempty"`
 }
 
 // StartRequest 是上层根据 RobotDeployment 形成的启动输入。InstanceID 可省略，

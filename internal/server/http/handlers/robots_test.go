@@ -32,21 +32,13 @@ import (
 	robotdomain "insightos.cn/semantic-framework/internal/robot"
 	"insightos.cn/semantic-framework/internal/server/auth"
 	"insightos.cn/semantic-framework/internal/store"
-	"insightos.cn/semantic-framework/pkg/config"
+	"insightos.cn/semantic-framework/internal/store/storetest"
 	"insightos.cn/semantic-framework/pkg/log"
 )
 
 func newRobotHandlerTest(t *testing.T) (http.Handler, *store.Store, *robotdomain.Service, <-chan any) {
 	t.Helper()
-	st, err := store.Open(config.StoreConfig{Driver: "sqlite", SQLitePath: filepath.Join(t.TempDir(), "robots.db")},
-		log.New(log.Options{Level: log.LevelError, Writer: io.Discard}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := st.Migrate(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = st.Close() })
+	st := storetest.OpenMigrated(t, log.New(log.Options{Level: log.LevelError, Writer: io.Discard}))
 	service := robotdomain.NewService(st, nil)
 	handler := NewRobotsHandler(service, st)
 	router := chi.NewRouter()

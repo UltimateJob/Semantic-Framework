@@ -17,7 +17,6 @@ package bootstrap
 
 import (
 	"io"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -25,7 +24,7 @@ import (
 	robotdomain "insightos.cn/semantic-framework/internal/robot"
 	"insightos.cn/semantic-framework/internal/robotruntime"
 	"insightos.cn/semantic-framework/internal/store"
-	"insightos.cn/semantic-framework/pkg/config"
+	"insightos.cn/semantic-framework/internal/store/storetest"
 	"insightos.cn/semantic-framework/pkg/log"
 )
 
@@ -43,16 +42,7 @@ func TestManagedRobotReadinessUsesServerDesiredOverDeploymentSeed(t *testing.T) 
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			logger := log.New(log.Options{Level: log.LevelError, Writer: io.Discard})
-			st, err := store.Open(config.StoreConfig{
-				Driver: "sqlite", SQLitePath: filepath.Join(t.TempDir(), "readiness.db"),
-			}, logger)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer st.Close()
-			if err := st.Migrate(); err != nil {
-				t.Fatal(err)
-			}
+			st := storetest.OpenMigrated(t, logger)
 			const robotID, pilotID = "readiness-robot", "readiness-pilot"
 			if test.serverVersion != "" {
 				if err := st.SaveRobotDesiredSkill(store.RobotDesiredSkill{

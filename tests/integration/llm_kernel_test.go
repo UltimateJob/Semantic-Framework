@@ -39,6 +39,7 @@ import (
 	"insightos.cn/semantic-framework/internal/agent/kernel"
 	"insightos.cn/semantic-framework/internal/bootstrap"
 	"insightos.cn/semantic-framework/internal/store"
+	"insightos.cn/semantic-framework/internal/store/storetest"
 	"insightos.cn/semantic-framework/pkg/config"
 	"insightos.cn/semantic-framework/pkg/log"
 )
@@ -50,6 +51,7 @@ func wireLLMApp(t *testing.T) *bootstrap.App {
 
 	cfg := config.Default()
 	cfg.Store.SQLitePath = filepath.Join(t.TempDir(), "test.db")
+	storetest.SeedMigratedAt(t, cfg.Store.SQLitePath)
 	cfg.LLM.Default = "mock" // 无 key 环境：默认模型走 mock 驱动
 	cfg.Agents.ProfilesDir = profilesDirAbs(t)
 	logger := log.New(log.Options{Level: log.LevelError, Writer: io.Discard})

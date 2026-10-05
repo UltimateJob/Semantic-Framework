@@ -54,11 +54,13 @@ func (s *memoryRuntimeStateStore) SaveRuntimeState(value ProjectRuntimeState) er
 }
 
 type fakeRuntimeClient struct {
-	healthy  bool
-	info     RuntimeInfo
-	instance SceneInstance
-	calls    []string
-	builds   []RuntimeBundle
+	healthy         bool
+	info            RuntimeInfo
+	instance        SceneInstance
+	calls           []string
+	builds          []RuntimeBundle
+	robotReads      int
+	evaluationReads int
 }
 
 func (f *fakeRuntimeClient) Health(context.Context) error {
@@ -159,6 +161,7 @@ func (f *fakeRuntimeClient) SceneSnapshot(context.Context, string) (SceneSnapsho
 }
 
 func (f *fakeRuntimeClient) SceneEvaluation(context.Context, string) (SceneEvaluation, error) {
+	f.evaluationReads++
 	return SceneEvaluation{
 		SceneKey: f.instance.SceneKey, InstanceID: f.instance.InstanceID,
 		Generation: f.instance.Generation, Reward: 1.25, Success: true,
@@ -166,6 +169,7 @@ func (f *fakeRuntimeClient) SceneEvaluation(context.Context, string) (SceneEvalu
 }
 
 func (f *fakeRuntimeClient) Robots(context.Context, string) ([]VirtualRobotDescriptor, error) {
+	f.robotReads++
 	return []VirtualRobotDescriptor{{
 		RobotID: "r1", Model: "r1pro", SDKPackage: "robot-sdk-r1pro",
 		BackendProfile: "mujoco", Capabilities: RobotCapability{

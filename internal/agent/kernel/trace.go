@@ -183,7 +183,8 @@ func (h *TraceHandler) OnEndWithStreamOutput(ctx context.Context, info *callback
 	return ctx
 }
 
-// WaitStreams is called after the producer has finished registering callbacks.
+// WaitStreams 只在一次 Run 的终态调用。中断流不得 Wait：Resume 会继续
+// 向同一个 WaitGroup Add，重叠 Wait/Add 会被 -race 判为 data race。
 func (h *TraceHandler) WaitStreams() { h.streams.Wait() }
 
 func (h *TraceHandler) recordStream(ctx context.Context, info *callbacks.RunInfo,

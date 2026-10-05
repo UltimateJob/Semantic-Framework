@@ -195,8 +195,8 @@ func TestConversationSettingsRejectBusyDuringFirstRecipientBuild(t *testing.T) {
 			}()
 			select {
 			case <-started:
-			case <-time.After(3 * time.Second):
-				t.Fatal("首轮装配未开始")
+			case <-time.After(runtimeEventWait):
+				t.Fatalf("首轮装配未在 %s 内开始", runtimeEventWait)
 			}
 			if _, err := svc.SetSessionAgentModel("busy-user", sess.ID, recipient, "mock", "auto"); !errors.Is(err, ErrSessionBusy) {
 				t.Fatalf("首次装配尚无 Runner 也必须拒绝模型切换: %v", err)
@@ -244,8 +244,8 @@ func TestConversationCacheInvalidationDuringBuildRetainsSessionLock(t *testing.T
 	}()
 	select {
 	case <-started:
-	case <-time.After(3 * time.Second):
-		t.Fatal("首轮装配未开始")
+	case <-time.After(runtimeEventWait):
+		t.Fatalf("首轮装配未在 %s 内开始", runtimeEventWait)
 	}
 	svc.InvalidateModelRuntimes()
 	if svc.sessionLock(sess.ID) != gate {
