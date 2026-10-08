@@ -31,6 +31,7 @@ type Options struct {
 	Endpoint         string   `json:"endpoint,omitempty"`
 	AcceptedLicenses []string `json:"accepted_licenses,omitempty"`
 }
+
 // Installer runs a component install and returns the emitted log lines.
 type Installer func(context.Context, string, Record, string, Options, func(string)) ([]string, error)
 
