@@ -16,6 +16,10 @@
 //
 // 自带装配入口（不接受已打开的 Store，只接受库路径）的测试用 SeedMigratedAt，
 // 效果相同：把模板放到该路径，随后 Migrate 只剩版本检查。
+//
+// 用法：在各包的 TestMain 中接入一次，即可共享同一份已迁移模板，例如
+//
+//	func TestMain(m *testing.M) { storetest.Main(m) }
 package storetest
 
 import (
@@ -51,11 +55,8 @@ var (
 	templateDir  string
 )
 
-// Main 包装 m.Run，并在测试进程退出前回收共享模板目录。各包用
-//
-//	func TestMain(m *testing.M) { storetest.Main(m) }
-//
-// 接入，避免每次测试都在临时目录留下模板副本。
+// Main 包装 m.Run，并在测试进程退出前回收共享模板目录。各包按包注释中的
+// TestMain 用法接入，避免每次测试都在临时目录留下模板副本。
 func Main(m *testing.M) {
 	code := m.Run()
 	CleanupTemplate()
